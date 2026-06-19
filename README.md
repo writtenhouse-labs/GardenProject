@@ -1,6 +1,7 @@
 # GardenProject
 
-GardenProject is an agricultural intelligence application built entirely by Codex. It contains:
+GardenProject is an agricultural intelligence application written by Codex under human direction. 
+It contains:
 
 - FastAPI backend
 - Streamlit frontend
