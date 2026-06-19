@@ -56,12 +56,15 @@ def inject_css() -> None:
     st.markdown(
         f"""
         <style>
+        :root {{
+            --portal-shell-width: min(900px, calc(100vw - 2rem));
+        }}
         .stApp {{
             background-color: #f8f9fa;
         }}
         .block-container {{
             max-width: 900px;
-            padding-top: 2rem;
+            padding: 2rem 0;
         }}
         section[data-testid="stSidebar"],
         div[data-testid="collapsedControl"] {{
@@ -75,7 +78,8 @@ def inject_css() -> None:
             border-radius: 0;
             min-height: 128px;
             padding: 1.35rem 1rem;
-            margin: 0 -1rem 2rem -1rem;
+            width: 100%;
+            margin: 0 0 2rem 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -87,11 +91,14 @@ def inject_css() -> None:
             text-decoration: none;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
+            flex: 0 0 84px;
             font-size: 12px;
             line-height: 1;
-            min-width: 64px;
             padding: 8px 10px;
+            box-sizing: border-box;
+            text-align: center;
             transition: 0.2s;
         }}
         .garden-nav a:hover {{
@@ -102,11 +109,15 @@ def inject_css() -> None:
             width: 42px;
             height: 42px;
             object-fit: contain;
-            margin-bottom: 5px;
+            margin: 0 auto 5px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 999px;
             padding: 4px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+        }}
+        .garden-nav span {{
+            width: 100%;
+            text-align: center;
         }}
         section[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"],
         div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlockBorderWrapper"] {{
@@ -121,31 +132,82 @@ def inject_css() -> None:
         div[data-testid="stMainBlockContainer"] > div[data-testid="stVerticalBlockBorderWrapper"] > div {{
             padding: 0;
         }}
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] {{
+        .portal-card-marker {{
+            display: none;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) {{
             background: white;
             border-radius: 6px;
             box-shadow: 0 .125rem .25rem rgba(0,0,0,.075);
-            margin: 0 auto 2rem auto;
-            max-width: 760px;
+            margin: 0 0 2rem 0;
+            max-width: none;
+            width: 100%;
             min-height: 360px;
             display: flex;
             align-items: center;
             border: 0 !important;
+            box-sizing: border-box;
         }}
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] > div {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) > div {{
             width: 100%;
             padding: 2rem;
+            box-sizing: border-box;
         }}
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"],
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] h1,
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] p,
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] strong,
-        div[data-testid="stMainBlockContainer"] div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stVerticalBlockBorderWrapper"] label {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) > div > div[data-testid="stVerticalBlock"] {{
+            width: min(100%, 760px);
+            max-width: 760px;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stAlert"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stForm"] {{
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stElementContainer"] {{
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stMarkdown"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stMarkdownContainer"] {{
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"] div[data-testid="stForm"] {{
+            width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"] div[data-testid="stForm"] > div {{
+            width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"] div[data-testid="stTextInput"],
+        div[data-testid="stMainBlockContainer"] div[data-testid="stTextInputRootElement"],
+        div[data-testid="stMainBlockContainer"] div[data-testid="stNumberInput"],
+        div[data-testid="stMainBlockContainer"] div[data-testid="stFileUploader"] {{
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"] input,
+        div[data-testid="stMainBlockContainer"] textarea {{
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)),
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) h1,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) strong,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) label {{
             color: #212529;
         }}
         .portal-heading {{
             text-align: center;
             margin-bottom: 1.5rem;
+            width: 100%;
         }}
         .portal-heading img {{
             width: 70px;
@@ -156,6 +218,31 @@ def inject_css() -> None:
         .portal-heading h1 {{
             font-size: 1.75rem;
             margin-bottom: 0.25rem;
+            text-align: center;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) h1,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) p {{
+            text-align: center;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stMarkdownContainer"] {{
+            text-align: center;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stForm"] label,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stForm"] label p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stForm"] [data-testid="stWidgetLabel"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stForm"] [data-testid="stWidgetLabel"] p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stTextInput"] label,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stTextInput"] label p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stNumberInput"] label,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stNumberInput"] label p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stFileUploader"] label,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stFileUploader"] label p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[role="radiogroup"] {{
+            text-align: left;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stAlert"] div[data-testid="stMarkdownContainer"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.portal-card-marker):not(:has(.garden-nav)) div[data-testid="stAlert"] p {{
+            text-align: center;
         }}
         .muted {{
             color: #6c757d;
@@ -192,6 +279,10 @@ def inject_css() -> None:
             background-color: #157347;
             color: white;
             border-color: #146c43;
+        }}
+        div[data-testid="stFormSubmitButton"] {{
+            display: flex;
+            justify-content: center;
         }}
         </style>
         """,
@@ -234,6 +325,7 @@ def render_heading(icon: str, title: str, subtitle: str = "") -> None:
 @contextmanager
 def portal_card():
     with st.container(border=True):
+        st.markdown('<span class="portal-card-marker"></span>', unsafe_allow_html=True)
         yield
 
 

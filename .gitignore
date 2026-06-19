@@ -6,3 +6,4 @@ backend/data/*.db
 backend/data/*.sqlite
 frontend/uploads/resumes/*
 !frontend/uploads/resumes/.gitkeep
+.run/

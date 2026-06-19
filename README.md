@@ -25,3 +25,9 @@ After dependencies are installed, use:
 Frontend: `http://localhost:8501`
 
 API: `http://127.0.0.1:8000`
+
+Stop both local services with:
+
+```powershell
+.\stop.ps1
+```
