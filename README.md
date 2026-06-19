@@ -1,13 +1,27 @@
 # GardenProject
 
-Garden Project employee portal scaffold built with the same stack shape as PelagicSeer:
+GardenProject is an agricultural intelligence application built entirely by Codex. It contains:
 
 - FastAPI backend
 - Streamlit frontend
 - Separate `backend` and `frontend` folders
-- Employee portal visual language copied from `C:\xampp\htdocs\employee-portal`
+- A Crop Intelligence Agent that orchestrates weather, drought, yield-history,
+  crop-progress, and similar-season services
+- Resilient live integrations with clearly labeled demo fallbacks
 
-The database layer is intentionally stubbed. Endpoints and service functions exist so real persistence can be added later without changing the page structure.
+Optional API credentials:
+
+```text
+NOAA_CDO_TOKEN=your_noaa_token
+USDA_NASS_API_KEY=your_nass_key
+```
+
+Copy `.env.example` to `.env` in the project root and add the credentials.
+GardenProject loads that file automatically without overriding environment
+variables already supplied by the operating system.
+
+The U.S. Drought Monitor integration does not require a key. Retired employee
+portal pages are preserved under `frontend/archive/pages` and are not routed.
 
 ## Run
 

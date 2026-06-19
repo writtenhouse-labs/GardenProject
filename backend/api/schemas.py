@@ -27,3 +27,17 @@ class ResumeApplication(BaseModel):
 class StubResponse(BaseModel):
     status: str
     message: str
+
+
+class CropAssessmentRequest(BaseModel):
+    state: str | None = None
+    county: str | None = None
+    county_fips: str | None = None
+    zipcode: str | None = Field(default=None, pattern=r"^\d{5}$")
+    crop: str = Field(..., min_length=1)
+    planting_month: int | None = Field(default=None, ge=1, le=12)
+    growing_season: str | None = None
+    irrigation: str | None = None
+    soil_type: str | None = None
+    field_size: float | None = Field(default=None, gt=0)
+    objective: str = "Monitor progress"
