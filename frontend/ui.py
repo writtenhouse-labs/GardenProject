@@ -7,27 +7,16 @@ import streamlit as st
 
 ASSET_DIR = Path(__file__).parent / "assets"
 GREEN = "#157a36"
-GREEN_TRANSLUCENT = "rgba(21, 122, 54, 0.62)"
+GREEN_TRANSLUCENT = "rgba(18, 104, 47, 0.88)"
 ORANGE = "rgb(238, 93, 27)"
 
 PUBLIC_NAV_ITEMS = [
-    ("Home", "/", "carrot.png"),
-    ("Contact Us", "/Contact_Us", "onion.png"),
-]
-
-LOGGED_OUT_NAV_ITEMS = [
-    ("Login", "/Login", "corn.png"),
-    ("Register", "/Register", "capsicum.png"),
-    ("Careers", "/Careers", "artichoke.png"),
-]
-
-LOGGED_IN_NAV_ITEMS = [
-    ("Profile", "/Profile", "capsicum.png"),
-    ("Logout", "/Logout", "corn.png"),
-]
-
-APPLICANT_NAV_ITEMS = [
-    ("Careers", "/Careers", "artichoke.png"),
+    ("Crop Intelligence", "/", "garlic.png"),
+    ("Crop Progress", "/Crop_Progress", "broccoli.png"),
+    ("Weather", "/Weather", "lemon.png"),
+    ("Drought", "/Drought", "onion.png"),
+    ("Yield History", "/Yield_History", "corn.png"),
+    ("Similarity", "/Similarity", "avocado.png"),
 ]
 
 
@@ -42,7 +31,7 @@ def icon_data_uri(filename: str) -> str:
 
 
 def configure_page(title: str, icon: str) -> None:
-    st.set_page_config(page_title=f"{title} | Employee Portal", page_icon=icon_path(icon))
+    st.set_page_config(page_title=f"{title} | GardenProject", page_icon=icon_path(icon), layout="wide")
     inject_css()
 
 
@@ -57,13 +46,13 @@ def inject_css() -> None:
         f"""
         <style>
         :root {{
-            --portal-shell-width: min(900px, calc(100vw - 2rem));
+            --portal-shell-width: min(1180px, calc(100vw - 2rem));
         }}
         .stApp {{
             background-color: #f8f9fa;
         }}
         .block-container {{
-            max-width: 900px;
+            max-width: 1180px;
             padding: 2rem 0;
         }}
         section[data-testid="stSidebar"],
@@ -284,6 +273,416 @@ def inject_css() -> None:
             display: flex;
             justify-content: center;
         }}
+        .intelligence-hero {{
+            background: {GREEN_TRANSLUCENT};
+            border-radius: 18px;
+            color: white;
+            padding: 3.4rem clamp(1.5rem, 5vw, 4rem);
+            margin-bottom: 1.5rem;
+            box-shadow: 0 18px 45px rgba(14, 74, 38, .18);
+            position: relative;
+            overflow: hidden;
+        }}
+        .intelligence-hero::after {{
+            content: "◌"; position: absolute; right: 4%; top: -35%;
+            font-size: 18rem; color: rgba(255,255,255,.08);
+        }}
+        .intelligence-hero h1 {{
+            font-size: clamp(2rem, 4vw, 3.4rem); margin: .25rem 0 .75rem; max-width: 760px;
+        }}
+        .intelligence-hero p {{
+            max-width: 780px; font-size: 1.05rem; line-height: 1.7;
+            color: rgba(255,255,255,.86); margin: 0;
+        }}
+        .eyebrow, .section-kicker, .optional-label, .results-heading span {{
+            font-size: .72rem; font-weight: 800; letter-spacing: .14em;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker),
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker) {{
+            background: white; border: 1px solid #e2e8e4 !important; border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(26, 65, 39, .06);
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) > div {{
+            padding: 1.7rem 2rem 2rem;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        > div > div[data-testid="stVerticalBlock"] {{
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker) > div {{ padding: 1.35rem; }}
+        .intelligence-panel-marker, .result-card-marker {{ display:none; }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker) {{
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker) > div {{
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        > div > div[data-testid="stVerticalBlock"] {{
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        div[data-testid="stElementContainer"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        div[data-testid="stMarkdown"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        div[data-testid="stMarkdownContainer"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        div[data-testid="stAlert"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker)
+        div[data-testid="stExpander"] {{
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"] div[data-testid="stHorizontalBlock"]:has(.result-card-marker) {{
+            width: 100%;
+            max-width: 100%;
+            gap: 1.25rem;
+            align-items: stretch;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stMainBlockContainer"]
+        div[data-testid="stHorizontalBlock"]:has(.result-card-marker)
+        div[data-testid="column"] {{
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .results-heading {{
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .section-heading {{
+            display:flex; justify-content:space-between; align-items:end; gap:2rem;
+            border-bottom:1px solid #e8eee9; padding-bottom:1rem; margin-bottom:.5rem;
+            width: calc(100% - 4rem);
+            max-width: calc(100% - 4rem);
+            box-sizing: border-box;
+        }}
+        .section-heading h2, .results-heading h2 {{ margin:.15rem 0; font-size:1.45rem; }}
+        .section-heading p {{ color:#68756c; max-width:470px; margin:0; }}
+        .section-kicker, .results-heading span {{ color:{GREEN}; }}
+        .optional-label {{ color:#718078; margin:1.4rem 0 .25rem; }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-testid="stHorizontalBlock"] {{
+            width: 100%;
+            gap: 1.25rem;
+            align-items: start;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-testid="column"] {{
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-testid="stElementContainer"] {{
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-baseweb="select"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-baseweb="input"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-testid="stTextInputRootElement"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-testid="stNumberInput"] {{
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[data-baseweb="select"] > div,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        input {{
+            box-sizing: border-box;
+            max-width: 100%;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+        div[role="radiogroup"] {{
+            width: auto !important;
+            max-width: 100% !important;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+        }}
+        .field-note {{
+            min-height: 66px;
+            margin-top: 1.72rem;
+            padding: .7rem .85rem;
+            background: #fff8f3;
+            border: 1px solid #f2ded1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            color: #6a4a36;
+            font-size: .78rem;
+            line-height: 1.42;
+        }}
+        .field-note-neutral {{
+            background: #f4f8f5;
+            border-color: #dce8df;
+            color: #506359;
+        }}
+        .assessment-button-marker {{ display: none; }}
+        div[data-testid="stElementContainer"]:has(.assessment-button-marker)
+        + div[data-testid="stElementContainer"] {{
+            width: 50% !important;
+            max-width: 50% !important;
+            margin-left: auto;
+            margin-right: auto;
+        }}
+        div[data-testid="stElementContainer"]:has(.assessment-button-marker)
+        + div[data-testid="stElementContainer"] div[data-testid="stButton"],
+        div[data-testid="stElementContainer"]:has(.assessment-button-marker)
+        + div[data-testid="stElementContainer"] button {{
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }}
+        .results-heading {{ margin:2.4rem 0 1rem; }}
+        .card-title {{ display:flex; align-items:center; gap:.75rem; margin-bottom:1rem; }}
+        .card-title,
+        .card-title > div {{
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .card-title small {{ color:#718078; font-weight:800; letter-spacing:.11em; }}
+        .card-title h3 {{ margin:.05rem 0; font-size:1.15rem; }}
+        .card-icon {{
+            width:42px; height:42px; border-radius:12px; background:#edf7f0;
+            display:flex; align-items:center; justify-content:center; font-size:1.25rem;
+        }}
+        .status-pill {{
+            display:inline-block; border-radius:999px; padding:.25rem .65rem;
+            font-size:.72rem; font-weight:800;
+        }}
+        .status-low, .status-on-track, .status-ahead {{ background:#dff3e5; color:#116530; }}
+        .status-moderate {{ background:#fff1c7; color:#8a5a00; }}
+        .status-high, .status-behind {{ background:#fde2df; color:#a52b20; }}
+        .card-lead {{
+            font-size:1.02rem;
+            line-height:1.55;
+            margin:.8rem 0 1.15rem;
+            max-width: 100%;
+            overflow-wrap: anywhere;
+        }}
+        .detail-grid {{
+            display:grid;
+            grid-template-columns:repeat(3,minmax(0, 1fr));
+            gap:.65rem;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .detail-grid div {{ background:#f5f8f6; border-radius:9px; padding:.75rem; }}
+        .detail-grid span, .comparison-list span {{ display:block; color:#758079; font-size:.75rem; }}
+        .detail-grid strong {{ display:block; font-size:.88rem; margin-top:.2rem; }}
+        .comparison-list div {{
+            display:flex; justify-content:space-between; gap:1rem;
+            padding:.7rem 0; border-bottom:1px solid #edf0ee;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .comparison-list strong {{
+            min-width: 0;
+            font-size:.85rem;
+            text-align:right;
+            overflow-wrap: anywhere;
+        }}
+        .availability-note {{ font-size:.78rem; color:#7b847e; margin:.8rem 0 0; }}
+        .risk-grid {{
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            align-items: end;
+            gap: 1rem;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .risk-tile {{
+            width: 100%;
+            min-width: 0;
+            border-radius: 11px;
+            padding: 1rem;
+            border-top: 4px solid;
+            box-sizing: border-box;
+            overflow-wrap: anywhere;
+        }}
+        .risk-low {{ background:#f2faf4; border-color:#36a15b; }}
+        .risk-moderate {{ background:#fffaf0; border-color:#e1a824; }}
+        .risk-high {{ background:#fff5f3; border-color:#d34b3f; }}
+        .risk-tile h4 {{ margin:.85rem 0 .4rem; }}
+        .risk-tile p {{
+            color:#5e6962;
+            font-size:.82rem;
+            line-height:1.5;
+            margin-bottom: 0;
+        }}
+        .season-row {{
+            display:flex; justify-content:space-between; gap:.75rem; align-items:start;
+            padding:.8rem 0; border-bottom:1px solid #edf0ee;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }}
+        .season-row > div {{ min-width: 0; }}
+        .season-row strong, .season-row span {{ display:block; }}
+        .season-row span {{ color:#6d786f; font-size:.78rem; margin-top:.18rem; }}
+        .season-row b {{ color:{GREEN}; white-space:nowrap; }}
+        .agent-summary {{
+            border-left:4px solid {ORANGE}; background:#fff8f3; margin:0;
+            padding:1.15rem 1.25rem; border-radius:0 10px 10px 0;
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-wrap: anywhere;
+            font-size:1.04rem; line-height:1.7; color:#333;
+        }}
+        .service-hero {{
+            background: linear-gradient(135deg, #f0f8f2 0%, #ffffff 65%);
+            border: 1px solid #dce9df;
+            border-radius: 18px;
+            padding: 2.4rem clamp(1.4rem, 4vw, 3rem);
+            margin-bottom: 1.35rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }}
+        .service-hero img {{
+            width: 92px;
+            height: 92px;
+            object-fit: contain;
+            background: white;
+            border-radius: 999px;
+            padding: 10px;
+            box-shadow: 0 8px 20px rgba(21, 122, 54, .12);
+        }}
+        .service-hero h1 {{
+            margin: .15rem 0 .4rem;
+            font-size: clamp(1.9rem, 4vw, 2.8rem);
+            color: #183c25;
+        }}
+        .service-hero p {{
+            margin: 0;
+            max-width: 760px;
+            color: #607067;
+            line-height: 1.65;
+        }}
+        .service-card {{
+            background: white;
+            border: 1px solid #e0e8e2;
+            border-radius: 15px;
+            padding: clamp(1.3rem, 3vw, 2rem);
+            box-shadow: 0 10px 28px rgba(24, 60, 37, .07);
+        }}
+        .service-card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 1rem;
+            padding-bottom: 1.1rem;
+            border-bottom: 1px solid #e8eee9;
+        }}
+        .service-card-header h2 {{ margin: .15rem 0 0; font-size: 1.35rem; }}
+        .source-link {{
+            color: {GREEN};
+            font-weight: 700;
+            text-decoration: none;
+        }}
+        .source-link:hover {{ color: {ORANGE}; }}
+        .service-data-grid {{
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .75rem;
+            margin: 1.2rem 0;
+        }}
+        .service-data-item {{
+            background: #f5f8f6;
+            border-left: 3px solid #78ad87;
+            border-radius: 8px;
+            padding: .8rem .9rem;
+            color: #34483b;
+            font-size: .9rem;
+        }}
+        .service-note {{
+            background: #fff8f3;
+            border: 1px solid #f5dfd1;
+            border-radius: 10px;
+            padding: .9rem 1rem;
+            color: #694a36;
+            line-height: 1.55;
+        }}
+        @media (max-width: 800px) {{
+            .section-heading {{
+                display:block;
+                width: calc(100% - 2.5rem);
+                max-width: calc(100% - 2.5rem);
+            }}
+            .section-heading p {{ margin-top:.6rem; }}
+            .detail-grid {{ grid-template-columns:1fr; }}
+            .service-hero {{ align-items:flex-start; }}
+            .service-hero img {{ width:68px; height:68px; }}
+            .service-data-grid {{ grid-template-columns:1fr; }}
+            .risk-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+            div[data-testid="stMainBlockContainer"]
+            div[data-testid="stHorizontalBlock"]:has(.result-card-marker) {{
+                flex-direction: column;
+                gap: 1rem;
+            }}
+            div[data-testid="stMainBlockContainer"]
+            div[data-testid="stHorizontalBlock"]:has(.result-card-marker)
+            > div[data-testid="column"] {{
+                width: 100% !important;
+                flex: 1 1 100% !important;
+            }}
+            .garden-nav {{ min-height:100px; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) > div {{
+                padding: 1.25rem;
+            }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
+            div[data-testid="stHorizontalBlock"] {{
+                gap: .75rem;
+            }}
+            div[data-testid="stElementContainer"]:has(.assessment-button-marker)
+            + div[data-testid="stElementContainer"] {{
+                width: 100% !important;
+                max-width: 100% !important;
+            }}
+        }}
+        @media (max-width: 520px) {{
+            .risk-grid {{ grid-template-columns: 1fr; }}
+        }}
         </style>
         """,
         unsafe_allow_html=True,
@@ -291,14 +690,7 @@ def inject_css() -> None:
 
 
 def render_nav() -> None:
-    initialize_session()
     nav_items = list(PUBLIC_NAV_ITEMS)
-    if st.session_state["logged_in"]:
-        nav_items.extend(LOGGED_IN_NAV_ITEMS)
-        if st.session_state.get("user_role") == "applicant":
-            nav_items.extend(APPLICANT_NAV_ITEMS)
-    else:
-        nav_items.extend(LOGGED_OUT_NAV_ITEMS)
 
     links = []
     for label, target, icon in nav_items:

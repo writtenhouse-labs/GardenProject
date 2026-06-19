@@ -7,3 +7,4 @@ backend/data/*.sqlite
 frontend/uploads/resumes/*
 !frontend/uploads/resumes/.gitkeep
 .run/
+backend/.env
