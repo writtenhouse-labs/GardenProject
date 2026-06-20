@@ -1,6 +1,6 @@
 # GardenProject
 
-GardenProject is an agricultural intelligence application written by Codex under human direction. 
+GardenProject is an agricultural intelligence application written by OpenAI Codex under human direction. 
 It contains:
 
 - FastAPI backend
