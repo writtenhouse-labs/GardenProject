@@ -53,6 +53,25 @@ def metric_value(value: str | None) -> str:
     return escape(value) if value else "Not currently available"
 
 
+IMPLEMENTED_INTEGRATIONS = {
+    "crop_progress": "Crop progress",
+    "weather": "Weather",
+    "drought": "Drought",
+    "yield_history": "Yield history",
+}
+
+
+def implemented_fallbacks(assessment: dict) -> list[str]:
+    results = assessment.get("integration_results", {})
+    failed = []
+    for key, label in IMPLEMENTED_INTEGRATIONS.items():
+        result = results.get(key, {})
+        if result.get("is_placeholder"):
+            note = result.get("note")
+            failed.append(f"{label}: {note}" if note else label)
+    return failed
+
+
 try:
     base_options = load_base_options()
 except requests.RequestException:
@@ -91,7 +110,7 @@ with st.container(border=True):
             try:
                 state_options = load_location_options(state=state)
             except requests.RequestException:
-                st.warning("County options are temporarily unavailable.")
+                st.error("County options are temporarily unavailable.")
         county_lookup = {item["name"]: item["fips"] for item in state_options.get("counties", [])}
         with location_right:
             county = st.selectbox("County *", ["Select a county"] + list(county_lookup))
@@ -114,7 +133,7 @@ with st.container(border=True):
                 crop_options = load_location_options(zipcode=zipcode)
                 state = crop_options.get("resolved_state")
             except requests.RequestException:
-                st.warning("ZIP-based crop options are temporarily unavailable.")
+                st.error("ZIP-based crop options are temporarily unavailable.")
 
     crops = crop_options.get("crops", [])
     crop_left, crop_right = st.columns(2, gap="medium")
@@ -173,7 +192,7 @@ if run_assessment:
         and county != "Select a county"
     ) or (location_mode == "ZIP code" and zipcode and len(zipcode) == 5 and zipcode.isdigit())
     if not valid_location or crop == "Select a crop":
-        st.warning("Choose a valid location and crop before generating the assessment.")
+        st.info("Choose a valid location and crop before generating the assessment.")
     else:
         payload = {
             "state": state,
@@ -288,8 +307,18 @@ if assessment:
                 unsafe_allow_html=True,
             )
             quality = assessment["data_quality"]
-            if quality["uses_placeholder_data"]:
-                st.warning("Some results use clearly labeled demo or fallback data because one or more live sources were unavailable.")
+            failed_integrations = implemented_fallbacks(assessment)
+            if failed_integrations:
+                st.error(
+                    "One or more implemented integrations failed or were unavailable, "
+                    "so this report defaulted to demo data: "
+                    + "; ".join(failed_integrations)
+                )
+            elif quality["uses_placeholder_data"]:
+                st.warning(
+                    "Demo data was used for clearly labeled sources: "
+                    + ", ".join(quality.get("placeholder_sources", []))
+                )
             with st.expander("Data sources and quality"):
                 for source in quality["sources"]:
                     st.write(f"• {source}")

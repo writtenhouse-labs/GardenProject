@@ -111,6 +111,13 @@ RESULT_KEYS = {
     "similarity": "similarity",
 }
 
+IMPLEMENTED_SERVICE_NAMES = {
+    "crop_progress": "Crop progress",
+    "weather": "Weather",
+    "drought": "Drought",
+    "yield_history": "Yield history",
+}
+
 
 def render_service_page(service_key: str) -> None:
     service = SERVICE_PAGES[service_key]
@@ -171,8 +178,8 @@ def render_service_page(service_key: str) -> None:
         if live_status["configured"]:
             st.success("NOAA integration configured. The token is stored server-side and is never sent to the browser.")
         else:
-            st.warning(
-                f"{live_status['message']} Add NOAA_CDO_TOKEN to the project-root .env file, then restart GardenProject."
+            st.error(
+                f"{live_status['message']} Weather reports will default to demo data until NOAA_CDO_TOKEN is configured."
             )
 
     st.markdown(
@@ -206,14 +213,21 @@ def render_service_page(service_key: str) -> None:
 def _render_result_messages(service_key: str, result: dict) -> None:
     note = result.get("note")
     is_placeholder = bool(result.get("is_placeholder"))
+    implemented_name = IMPLEMENTED_SERVICE_NAMES.get(service_key)
 
-    if is_placeholder:
+    if is_placeholder and implemented_name:
+        st.error(
+            f"The implemented {implemented_name} integration failed or was unavailable, "
+            "so this result defaulted to demo data."
+            f"{f' Provider message: {note}' if note else ''}"
+        )
+    elif is_placeholder:
         st.warning(
-            f"This result used placeholder or fallback data."
+            "Demo data was used for this result."
             f"{f' Provider message: {note}' if note else ''}"
         )
     elif note:
-        st.warning(f"Provider message: {note}")
+        st.info(f"Provider message: {note}")
     else:
         st.success("Live or service-generated data was returned without a provider error.")
 
@@ -233,7 +247,10 @@ def _render_result_messages(service_key: str, result: dict) -> None:
             if result.get(key) is None
         ]
         if missing:
-            st.warning(f"Missing NOAA fields: {', '.join(missing)}.")
+            st.error(
+                "The implemented Weather integration returned incomplete data. "
+                f"Missing NOAA fields: {', '.join(missing)}."
+            )
     elif service_key == "drought" and result.get("dsci") is None:
         st.error("The drought response did not include a DSCI value.")
     elif service_key == "similarity" and not result.get("matches"):
