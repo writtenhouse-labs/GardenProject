@@ -7,7 +7,7 @@ import streamlit as st
 
 ASSET_DIR = Path(__file__).parent / "assets"
 GREEN = "#157a36"
-GREEN_TRANSLUCENT = "rgba(18, 104, 47, 0.88)"
+GREEN_TRANSLUCENT = "#157a369c"
 ORANGE = "rgb(238, 93, 27)"
 
 PUBLIC_NAV_ITEMS = [
