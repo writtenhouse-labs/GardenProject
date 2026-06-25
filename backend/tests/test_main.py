@@ -55,6 +55,7 @@ def test_crop_intelligence_assessment_works_with_fallback_data() -> None:
         "weather",
         "drought",
         "yield_history",
+        "crop_rotation",
         "similarity",
     }
 

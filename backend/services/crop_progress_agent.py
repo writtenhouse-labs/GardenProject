@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 
-from services import crop_progress_service, drought_service, similarity_service, weather_service, yield_history_service
+from services import crop_progress_service, crop_rotation_service, drought_service, similarity_service, weather_service, yield_history_service
 from services.location_service import counties, state_details, state_from_zipcode, states
 
 
@@ -35,7 +35,7 @@ def assess(request) -> dict:
     state_name = request.state or (state_from_zipcode(request.zipcode) if request.zipcode else "") or "United States"
     state_alpha, _ = state_details(state_name)
     location = f"{request.county}, {state_name}" if request.county else f"ZIP {request.zipcode}"
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         progress_future = executor.submit(
             crop_progress_service.assess,
             request.crop,
@@ -54,10 +54,17 @@ def assess(request) -> dict:
             state_alpha,
             request.county,
         )
+        rotation_future = executor.submit(
+            crop_rotation_service.get_crop_rotation,
+            request.crop,
+            state_alpha,
+            request.county,
+        )
         progress = progress_future.result()
         weather = weather_future.result()
         drought = drought_future.result()
         history = history_future.result()
+        rotation = rotation_future.result()
     risks = _risks(weather, drought, request.irrigation)
     similar = similarity_service.find_similar_seasons({
         "crop": request.crop,
@@ -67,6 +74,7 @@ def assess(request) -> dict:
         "temperature": weather["average_high_c"],
         "drought": drought["dsci"],
         "soil": request.soil_type,
+        "rotation": rotation.get("rotation_sequence", []),
     })
     elevated = [risk["name"].lower() for risk in risks if risk["level"] == "High"]
     caution = [risk["name"].lower() for risk in risks if risk["level"] == "Moderate"]
@@ -87,7 +95,7 @@ def assess(request) -> dict:
 
     placeholders = [
         item["source"]
-        for item in (progress, weather, drought, history, similar)
+        for item in (progress, weather, drought, history, rotation, similar)
         if item.get("is_placeholder")
     ]
     return {
@@ -113,12 +121,13 @@ def assess(request) -> dict:
             "weather": weather,
             "drought": drought,
             "yield_history": history,
+            "crop_rotation": rotation,
             "similarity": similar,
         },
         "data_quality": {
             "uses_placeholder_data": bool(placeholders),
             "placeholder_sources": placeholders,
-            "sources": [progress["source"], weather["source"], drought["source"], history["source"], similar["source"]],
+            "sources": [progress["source"], weather["source"], drought["source"], history["source"], rotation["source"], similar["source"]],
         },
     }
 
