@@ -79,9 +79,11 @@ SERVICE_PAGES = {
             "Crop or commodity",
             "State and county geography",
             "Recent ten-year record window",
+            "County or state planted-acreage records for crop rotation context",
+            "Dominant crop by year and top crop mix",
         ],
-        "agent_use": "The agent uses available records to provide historical outcome context and support yield-risk interpretation.",
-        "note": "A USDA NASS API key enables live records. When the API is unavailable, the agent reports that yield history is unavailable rather than inventing a comparison.",
+        "agent_use": "The agent uses available records to provide historical outcome context, support yield-risk interpretation, and add regional crop-rotation context to similarity matching.",
+        "note": "A USDA NASS API key enables live yield records and county or state planted-acreage history. Rotation is regional context inferred from planted acreage, not field-level farmer-reported rotation.",
     },
     "similarity": {
         "title": "Similarity",
@@ -116,6 +118,7 @@ IMPLEMENTED_SERVICE_NAMES = {
     "weather": "Weather",
     "drought": "Drought",
     "yield_history": "Yield history",
+    "crop_rotation": "Crop rotation",
 }
 
 
@@ -206,6 +209,12 @@ def render_service_page(service_key: str) -> None:
     else:
         _render_result_messages(service_key, result)
         st.code(json.dumps(result, indent=2, ensure_ascii=False), language="json")
+        if service_key == "yield_history":
+            rotation = integration_results.get("crop_rotation")
+            if rotation:
+                st.markdown("### Raw crop rotation context")
+                _render_result_messages("crop_rotation", rotation)
+                st.code(json.dumps(rotation, indent=2, ensure_ascii=False), language="json")
 
     render_footer()
 

@@ -58,6 +58,7 @@ IMPLEMENTED_INTEGRATIONS = {
     "weather": "Weather",
     "drought": "Drought",
     "yield_history": "Yield history",
+    "crop_rotation": "Crop rotation",
 }
 
 
@@ -221,6 +222,7 @@ if assessment is None:
 if assessment:
     status = assessment["crop_status"]
     comparison = assessment["progress_comparison"]
+    rotation = assessment.get("integration_results", {}).get("crop_rotation", {})
     st.markdown(
         '<div class="results-heading"><span>AGENT ASSESSMENT</span><h2>What the field signals suggest</h2></div>',
         unsafe_allow_html=True,
@@ -276,6 +278,32 @@ if assessment:
             f'<div class="risk-grid">{risk_cards}</div>',
             unsafe_allow_html=True,
         )
+
+    if rotation:
+        sequence_rows = "".join(
+            f"""
+            <div class="season-row">
+                <div><strong>{item["year"]}</strong><span>{escape(item["dominant_crop"])}</span></div>
+                <b>{escape(str(item.get("planted_acres") or "demo"))}</b>
+            </div>
+            """
+            for item in rotation.get("rotation_sequence", [])[:4]
+        )
+        with st.container(border=True):
+            st.markdown('<span class="result-card-marker"></span>', unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="card-title"><span class="card-icon">R</span><div><small>ROTATION CONTEXT</small><h3>Historical Crop Rotation</h3></div></div>
+                <div class="detail-grid">
+                    <div><span>Previous crop</span><strong>{escape(str(rotation.get("previous_crop") or "Not available"))}</strong></div>
+                    <div><span>Rotation diversity</span><strong>{escape(str(rotation.get("rotation_diversity_score", "Not available")))}</strong></div>
+                    <div><span>Same crop run</span><strong>{escape(str(rotation.get("continuous_same_crop_years", "Not available")))} year(s)</strong></div>
+                </div>
+                <div class="rotation-sequence">{sequence_rows}</div>
+                <p class="availability-note">{escape(rotation.get("note") or "")}</p>
+                """,
+                unsafe_allow_html=True,
+            )
 
     similar_col, summary_col = st.columns([0.9, 1.1])
     with similar_col:
