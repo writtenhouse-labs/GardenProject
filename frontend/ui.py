@@ -46,14 +46,24 @@ def inject_css() -> None:
         f"""
         <style>
         :root {{
-            --portal-shell-width: min(1180px, calc(100vw - 2rem));
+            --gp-page-max: 1180px;
+            --gp-page-gutter: clamp(1rem, 2.5vw, 1.5rem);
+            --gp-section-gap: 1rem;
+            --gp-panel-padding: clamp(1.25rem, 2.4vw, 2rem);
+            --gp-control-gap: 1rem;
+            --gp-control-radius: 8px;
+            --gp-panel-radius: 14px;
+            --gp-border: #e2e8e4;
+            --gp-page-bg: #f3f6f4;
+            --gp-surface: #ffffff;
+            --portal-shell-width: min(var(--gp-page-max), calc(100vw - (var(--gp-page-gutter) * 2)));
         }}
         .stApp {{
-            background-color: #f8f9fa;
+            background-color: var(--gp-page-bg);
         }}
         .block-container {{
-            max-width: 1180px;
-            padding: 2rem 0;
+            max-width: var(--gp-page-max);
+            padding: 1.5rem var(--gp-page-gutter) 2rem;
         }}
         section[data-testid="stSidebar"],
         div[data-testid="collapsedControl"] {{
@@ -280,9 +290,9 @@ def inject_css() -> None:
             border-radius: 18px;
             color: #173c25;
             padding: 3.4rem clamp(1.5rem, 5vw, 4rem);
-            margin-bottom: 1.5rem;
+            margin-bottom: var(--gp-section-gap);
             border: 1px solid rgba(185, 214, 175, .72);
-            box-shadow: 0 18px 45px rgba(81, 128, 71, .13);
+            box-shadow: 0 10px 26px rgba(81, 128, 71, .10);
             position: relative;
             overflow: hidden;
         }}
@@ -324,11 +334,21 @@ def inject_css() -> None:
         }}
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker),
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.result-card-marker) {{
-            background: white; border: 1px solid #e2e8e4 !important; border-radius: 14px;
+            background: var(--gp-surface); border: 1px solid var(--gp-border) !important; border-radius: var(--gp-panel-radius);
             box-shadow: 0 8px 24px rgba(26, 65, 39, .06);
+            color: #1f2d24;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) h1,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) h2,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) h3,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) p,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) label,
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) [data-testid="stWidgetLabel"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) [data-testid="stWidgetLabel"] p {{
+            color: #1f2d24;
         }}
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) > div {{
-            padding: 1.7rem 2rem 2rem;
+            padding: var(--gp-panel-padding);
             width: 100%;
             box-sizing: border-box;
             overflow: hidden;
@@ -399,9 +419,9 @@ def inject_css() -> None:
         }}
         .section-heading {{
             display:flex; justify-content:space-between; align-items:end; gap:2rem;
-            border-bottom:1px solid #e8eee9; padding-bottom:1rem; margin-bottom:.5rem;
-            width: calc(100% - 4rem);
-            max-width: calc(100% - 4rem);
+            border-bottom:1px solid #e8eee9; padding-bottom:1rem; margin-bottom:var(--gp-control-gap);
+            width: 100%;
+            max-width: 100%;
             box-sizing: border-box;
         }}
         .section-heading h2, .results-heading h2 {{ margin:.15rem 0; font-size:1.45rem; }}
@@ -411,7 +431,7 @@ def inject_css() -> None:
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
         div[data-testid="stHorizontalBlock"] {{
             width: 100%;
-            gap: 1.25rem;
+            gap: var(--gp-control-gap);
             align-items: start;
         }}
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
@@ -460,11 +480,11 @@ def inject_css() -> None:
         }}
         .field-note {{
             min-height: 66px;
-            margin-top: 1.72rem;
+            margin-top: 1.65rem;
             padding: .7rem .85rem;
             background: #fff8f3;
             border: 1px solid #f2ded1;
-            border-radius: 8px;
+            border-radius: var(--gp-control-radius);
             box-sizing: border-box;
             color: #6a4a36;
             font-size: .78rem;
@@ -671,8 +691,8 @@ def inject_css() -> None:
         @media (max-width: 800px) {{
             .section-heading {{
                 display:block;
-                width: calc(100% - 2.5rem);
-                max-width: calc(100% - 2.5rem);
+                width: 100%;
+                max-width: 100%;
             }}
             .section-heading p {{ margin-top:.6rem; }}
             .detail-grid {{ grid-template-columns:1fr; }}
@@ -693,7 +713,7 @@ def inject_css() -> None:
             }}
             .garden-nav {{ min-height:100px; }}
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker) > div {{
-                padding: 1.25rem;
+                padding: var(--gp-panel-padding);
             }}
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.intelligence-panel-marker)
             div[data-testid="stHorizontalBlock"] {{

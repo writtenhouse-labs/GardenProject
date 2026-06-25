@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import csv
+import json
+from collections import defaultdict
+from functools import lru_cache
+from io import BytesIO, TextIOWrapper
+from pathlib import Path
+from zipfile import ZipFile
+
 import requests
 
 
@@ -33,6 +41,9 @@ FALLBACK_COUNTIES = {
     "Texas": [("Harris County", "48201"), ("Lubbock County", "48303"), ("Nueces County", "48355")],
 }
 
+COUNTY_GAZETTEER_URL = "https://www2.census.gov/geo/docs/maps-data/data/gazetteer/2023_Gazetteer/2023_Gaz_counties_national.zip"
+COUNTIES_PATH = Path(__file__).resolve().parents[1] / "data" / "counties.json"
+
 
 def states() -> list[dict[str, str]]:
     return [
@@ -46,24 +57,61 @@ def counties(state_name: str) -> tuple[list[dict[str, str]], bool]:
     if not state:
         return [], True
     try:
-        response = requests.get(
-            "https://api.census.gov/data/2020/dec/pl",
-            params={"get": "NAME", "for": "county:*", "in": f"state:{state[1]}"},
-            timeout=8,
-        )
-        response.raise_for_status()
-        rows = response.json()
-        values = [
-            {
-                "name": row[0].split(",", 1)[0],
-                "fips": f"{row[1]}{row[2]}",
-            }
-            for row in rows[1:]
-        ]
-        return sorted(values, key=lambda item: item["name"]), False
+        values = _counties_by_state().get(state[0], [])
+        if values:
+            return values, False
     except (requests.RequestException, ValueError, IndexError):
-        fallback = FALLBACK_COUNTIES.get(state_name, [(f"{state_name} (statewide)", state[1])])
-        return [{"name": name, "fips": fips} for name, fips in fallback], True
+        pass
+    fallback = FALLBACK_COUNTIES.get(state_name, [(f"{state_name} (statewide)", state[1])])
+    return [{"name": name, "fips": fips} for name, fips in fallback], True
+
+
+def warm_county_cache() -> None:
+    _counties_by_state()
+
+
+@lru_cache(maxsize=1)
+def _gazetteer_rows() -> tuple[dict[str, str], ...]:
+    if COUNTIES_PATH.exists():
+        with COUNTIES_PATH.open(encoding="utf-8-sig") as file:
+            return tuple(json.load(file))
+    response = requests.get(COUNTY_GAZETTEER_URL, timeout=12)
+    response.raise_for_status()
+    with ZipFile(BytesIO(response.content)) as archive:
+        entry_name = archive.namelist()[0]
+        with archive.open(entry_name) as file:
+            reader = csv.DictReader(TextIOWrapper(file, encoding="utf-8"), delimiter="\t")
+            return tuple(reader)
+
+
+@lru_cache(maxsize=1)
+def _counties_by_state() -> dict[str, list[dict[str, str]]]:
+    grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
+    for row in _gazetteer_rows():
+        state_alpha = row.get("state") or row.get("USPS")
+        name = row.get("name") or row.get("NAME")
+        fips = row.get("fips") or row.get("GEOID")
+        if not state_alpha or not name or not fips:
+            continue
+        grouped[state_alpha].append(
+            {
+                "name": name,
+                "fips": fips,
+                "latitude": _number(row.get("latitude") or row.get("INTPTLAT")),
+                "longitude": _number(row.get("longitude") or row.get("INTPTLONG")),
+            }
+        )
+    return {
+        state_alpha: sorted(values, key=lambda item: item["name"])
+        for state_alpha, values in grouped.items()
+    }
+
+
+def _number(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def state_details(state_name: str) -> tuple[str, str]:

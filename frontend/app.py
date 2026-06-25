@@ -2,16 +2,22 @@ from __future__ import annotations
 
 import calendar
 from html import escape
+import os
 
 import requests
 import streamlit as st
 
 from api_client import get, post
+from configuration import load_configuration
+from field_map_component import render_field_map
 from ui import configure_page, render_footer, render_nav
 
 
+load_configuration()
 configure_page("Crop Intelligence Agent", "garlic.png")
 render_nav()
+
+st.session_state.setdefault("field_location", {})
 
 st.markdown(
     """
@@ -60,6 +66,7 @@ IMPLEMENTED_INTEGRATIONS = {
     "yield_history": "Yield history",
     "crop_rotation": "Crop rotation",
 }
+UNKNOWN_CROP_LABEL = "Unknown / identify from boundary"
 
 
 def implemented_fallbacks(assessment: dict) -> list[str]:
@@ -100,6 +107,7 @@ with st.container(border=True):
             unsafe_allow_html=True,
         )
     state = county = county_fips = zipcode = None
+    map_center_query = ""
 
     if location_mode == "State and county":
         state_names = [item["name"] for item in base_options.get("states", [])]
@@ -112,12 +120,15 @@ with st.container(border=True):
                 state_options = load_location_options(state=state)
             except requests.RequestException:
                 st.error("County options are temporarily unavailable.")
-        county_lookup = {item["name"]: item["fips"] for item in state_options.get("counties", [])}
+        county_lookup = {item["name"]: item for item in state_options.get("counties", [])}
         with location_right:
             county = st.selectbox("County *", ["Select a county"] + list(county_lookup))
+        if state != "Select a state or territory" and county != "Select a county":
+            map_center_query = f"{county}, {state}, USA"
         crop_options = state_options
         if county != "Select a county":
-            county_fips = county_lookup[county]
+            county_details = county_lookup[county]
+            county_fips = county_details["fips"]
             try:
                 crop_options = load_location_options(state=state, county=county)
             except requests.RequestException:
@@ -130,6 +141,7 @@ with st.container(border=True):
             st.text_input("Resolved state", value="", disabled=True, placeholder="Loaded from ZIP code")
         crop_options = {"crops": []}
         if len(zipcode) == 5 and zipcode.isdigit():
+            map_center_query = f"{zipcode}, USA"
             try:
                 crop_options = load_location_options(zipcode=zipcode)
                 state = crop_options.get("resolved_state")
@@ -137,11 +149,17 @@ with st.container(border=True):
                 st.error("ZIP-based crop options are temporarily unavailable.")
 
     crops = crop_options.get("crops", [])
+    crop_choices = [UNKNOWN_CROP_LABEL] + [item for item in crops if item != UNKNOWN_CROP_LABEL]
     crop_left, crop_right = st.columns(2, gap="medium")
     with crop_left:
-        crop = st.selectbox("Crop *", ["Select a crop"] + crops, disabled=not crops)
+        crop = st.selectbox("Crop", ["Select a crop"] + crop_choices, disabled=not crop_choices)
     with crop_right:
-        if crop_options.get("note"):
+        if crop == UNKNOWN_CROP_LABEL:
+            st.markdown(
+                '<div class="field-note field-note-neutral"><strong>Crop identification mode</strong><br>The assessment will use field location, weather, drought, and rotation context while crop-specific progress waits for future CDL/CLU identification.</div>',
+                unsafe_allow_html=True,
+            )
+        elif crop_options.get("note"):
             st.markdown(
                 f'<div class="field-note"><strong>Demo data notice</strong><br>{escape(crop_options["note"])}</div>',
                 unsafe_allow_html=True,
@@ -151,6 +169,48 @@ with st.container(border=True):
                 '<div class="field-note field-note-neutral"><strong>Data availability</strong><br>Live and fallback sources are evaluated when the assessment runs.</div>',
                 unsafe_allow_html=True,
             )
+
+    st.markdown('<div class="optional-label">FIELD LOCATION</div>', unsafe_allow_html=True)
+    maps_api_key = os.getenv("GOOGLE_MAPS_API_KEY", "").strip()
+    if map_center_query:
+        if st.session_state.get("_field_map_context") != map_center_query:
+            st.session_state["field_location"] = {}
+            st.session_state["_field_map_context"] = map_center_query
+        map_center = None
+        if location_mode == "State and county" and county and county != "Select a county":
+            county_details = county_lookup.get(county, {})
+            if county_details.get("latitude") is not None and county_details.get("longitude") is not None:
+                map_center = {
+                    "latitude": county_details["latitude"],
+                    "longitude": county_details["longitude"],
+                }
+        if maps_api_key:
+            map_result = render_field_map(
+                api_key=maps_api_key,
+                center_query=map_center_query,
+                center=map_center,
+                value=st.session_state.get("field_location", {}),
+            )
+            if isinstance(map_result, dict):
+                st.session_state["field_location"] = map_result
+        else:
+            st.info("GOOGLE_MAPS_API_KEY is not configured. Add it to the frontend service to enable field pin and boundary capture.")
+
+        field_location = st.session_state.get("field_location", {})
+        lat_value = field_location.get("latitude")
+        lon_value = field_location.get("longitude")
+        lat_col, lon_col, precision_col = st.columns(3, gap="medium")
+        with lat_col:
+            st.text_input("Latitude", value="" if lat_value is None else str(lat_value), disabled=True)
+        with lon_col:
+            st.text_input("Longitude", value="" if lon_value is None else str(lon_value), disabled=True)
+        with precision_col:
+            st.text_input("Location precision", value=field_location.get("precision", "regional"), disabled=True)
+    else:
+        st.markdown(
+            '<div class="field-note field-note-neutral"><strong>Field map</strong><br>Select a county or enter a ZIP code to center the satellite map.</div>',
+            unsafe_allow_html=True,
+        )
 
     timing_left, timing_right = st.columns(2, gap="medium")
     with timing_left:
@@ -174,7 +234,18 @@ with st.container(border=True):
         )
     optional_row_two_left, optional_row_two_right = st.columns(2, gap="medium")
     with optional_row_two_left:
-        field_size = st.number_input("Field size (acres)", min_value=0.0, value=0.0, step=1.0)
+        field_location = st.session_state.get("field_location", {})
+        map_acres = field_location.get("acres")
+        if map_acres and st.session_state.get("_map_acres_seen") != map_acres:
+            st.session_state["field_size_input"] = float(map_acres)
+            st.session_state["_map_acres_seen"] = map_acres
+        field_size = st.number_input(
+            "Field size (acres)",
+            min_value=0.0,
+            value=float(st.session_state.get("field_size_input", 0.0)),
+            step=1.0,
+            key="field_size_input",
+        )
     with optional_row_two_right:
         objective = st.selectbox(
             "Objective",
@@ -193,9 +264,14 @@ if run_assessment:
         and county != "Select a county"
     ) or (location_mode == "ZIP code" and zipcode and len(zipcode) == 5 and zipcode.isdigit())
     if not valid_location or crop == "Select a crop":
-        st.info("Choose a valid location and crop before generating the assessment.")
+        st.info("Choose a valid location and select a crop or Unknown / identify from boundary before generating the assessment.")
     else:
         payload = {
+            "latitude": st.session_state.get("field_location", {}).get("latitude"),
+            "longitude": st.session_state.get("field_location", {}).get("longitude"),
+            "location_precision": st.session_state.get("field_location", {}).get("precision"),
+            "point_geojson": st.session_state.get("field_location", {}).get("point_geojson"),
+            "field_boundary_geojson": st.session_state.get("field_location", {}).get("boundary_geojson"),
             "state": state,
             "county": county if county != "Select a county" else None,
             "county_fips": county_fips,
