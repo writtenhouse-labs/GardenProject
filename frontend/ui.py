@@ -274,12 +274,15 @@ def inject_css() -> None:
             justify-content: center;
         }}
         .intelligence-hero {{
-            background: {GREEN_TRANSLUCENT};
+            background:
+                linear-gradient(90deg, rgba(238, 248, 234, .94) 0%, rgba(231, 246, 224, .82) 46%, rgba(228, 243, 218, .68) 100%),
+                url("{icon_data_uri("field-hero.png")}") center 56% / cover no-repeat;
             border-radius: 18px;
-            color: white;
+            color: #173c25;
             padding: 3.4rem clamp(1.5rem, 5vw, 4rem);
             margin-bottom: 1.5rem;
-            box-shadow: 0 18px 45px rgba(14, 74, 38, .18);
+            border: 1px solid rgba(185, 214, 175, .72);
+            box-shadow: 0 18px 45px rgba(81, 128, 71, .13);
             position: relative;
             overflow: hidden;
         }}
@@ -293,6 +296,28 @@ def inject_css() -> None:
         .intelligence-hero p {{
             max-width: 780px; font-size: 1.05rem; line-height: 1.7;
             color: rgba(255,255,255,.86); margin: 0;
+        }}
+        .intelligence-hero::after {{
+            content: "" !important;
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.38));
+            pointer-events: none;
+        }}
+        .intelligence-hero h1,
+        .intelligence-hero p,
+        .intelligence-hero .eyebrow {{
+            position: relative;
+            z-index: 1;
+        }}
+        .intelligence-hero h1 {{
+            color: #173c25;
+        }}
+        .intelligence-hero p {{
+            color: #3e5d45;
+        }}
+        .intelligence-hero .eyebrow {{
+            color: #5b8a4c;
         }}
         .eyebrow, .section-kicker, .optional-label, .results-heading span {{
             font-size: .72rem; font-weight: 800; letter-spacing: .14em;
