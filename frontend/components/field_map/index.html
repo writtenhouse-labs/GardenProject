@@ -1,0 +1,519 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      color: #24382b;
+      font-family: "Source Sans Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      margin: 0;
+      background: transparent;
+    }
+    .shell {
+      border: 1px solid #dce8df;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #f7faf7;
+    }
+    #map {
+      height: 360px;
+      width: 100%;
+      background: #eef5ef;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px;
+      border-top: 1px solid #dce8df;
+      background: #ffffff;
+    }
+    button {
+      border: 1px solid #b7d0bd;
+      background: #f2faf4;
+      color: #174a28;
+      border-radius: 7px;
+      cursor: pointer;
+      font-weight: 700;
+      padding: 8px 10px;
+    }
+    button.active {
+      background: #157a36;
+      border-color: #157a36;
+      color: white;
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px;
+      background: #ffffff;
+    }
+    label {
+      display: block;
+      color: #52645a;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #d6e2da;
+      border-radius: 7px;
+      color: #24382b;
+      font: inherit;
+      margin-top: 5px;
+      padding: 8px;
+    }
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+      grid-column: 1 / -1;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+    .note {
+      color: #66766c;
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 0 10px 10px;
+      background: #ffffff;
+    }
+    .mode-help {
+      color: #52715d;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 0 10px 10px;
+      background: #ffffff;
+    }
+    .error {
+      color: #9a2a22;
+      padding: 12px;
+      background: #fff5f3;
+      border: 1px solid #f0cbc6;
+      border-radius: 10px;
+    }
+    @media (max-width: 720px) {
+      #map { height: 300px; }
+      .fields { grid-template-columns: 1fr; }
+      textarea { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const Streamlit = {
+      RENDER_EVENT: "streamlit:render",
+      setComponentReady() {
+        window.parent.postMessage({
+          isStreamlitMessage: true,
+          type: "streamlit:componentReady",
+          apiVersion: 1
+        }, "*");
+      },
+      setFrameHeight(height) {
+        window.parent.postMessage({
+          isStreamlitMessage: true,
+          type: "streamlit:setFrameHeight",
+          height
+        }, "*");
+      },
+      setComponentValue(value) {
+        window.parent.postMessage({
+          isStreamlitMessage: true,
+          type: "streamlit:setComponentValue",
+          value
+        }, "*");
+      },
+      events: {
+        addEventListener(type, callback) {
+          window.addEventListener("message", (event) => {
+            const data = event.data || {};
+            if (data.type === type) {
+              callback({ detail: data });
+            }
+          });
+        }
+      }
+    };
+    let map;
+    let marker;
+    let polygon;
+    let polygonPath;
+    let mode = "pin";
+    let mapsLoading = false;
+    let mapsLoaded = false;
+    let rendered = false;
+    let centerKey = "";
+    let frameHeight = 0;
+    let args = {};
+    let value = {
+      latitude: null,
+      longitude: null,
+      acres: null,
+      point_geojson: null,
+      boundary_geojson: null,
+      precision: "regional"
+    };
+
+    function renderShell() {
+      const root = document.getElementById("root");
+      if (!args.api_key) {
+        root.innerHTML = '<div class="error">GOOGLE_MAPS_API_KEY is not configured for the frontend service.</div>';
+        Streamlit.setFrameHeight(70);
+        return;
+      }
+      if (rendered && document.getElementById("map")) {
+        setMode(mode);
+        syncInputs();
+        resizeFrame();
+        return;
+      }
+      root.innerHTML = `
+        <div class="shell">
+          <div id="map"></div>
+          <div class="toolbar">
+            <button id="pinMode" type="button">Drop or move pin</button>
+            <button id="polygonMode" type="button">Draw boundary</button>
+            <button id="clearBoundary" type="button">Clear boundary</button>
+            <button id="clearPin" type="button">Clear pin</button>
+          </div>
+          <div id="modeHelp" class="mode-help"></div>
+          <div class="fields">
+            <div>
+              <label for="lat">Latitude</label>
+              <input id="lat" inputmode="decimal" placeholder="Drop a pin" />
+            </div>
+            <div>
+              <label for="lon">Longitude</label>
+              <input id="lon" inputmode="decimal" placeholder="Drop a pin" />
+            </div>
+            <div>
+              <label for="acres">Approx. acres</label>
+              <input id="acres" inputmode="decimal" placeholder="Optional" />
+            </div>
+            <label for="geojson">Boundary GeoJSON</label>
+            <textarea id="geojson" readonly placeholder="Draw a boundary to generate GeoJSON"></textarea>
+          </div>
+          <div class="note">Use the pin for point-based sampling now. Draw a boundary when you want a polygon saved as GeoJSON for future CDL or CLU integrations.</div>
+        </div>
+      `;
+      document.getElementById("pinMode").addEventListener("click", () => setMode("pin"));
+      document.getElementById("polygonMode").addEventListener("click", () => setMode("polygon"));
+      document.getElementById("clearBoundary").addEventListener("click", clearBoundary);
+      document.getElementById("clearPin").addEventListener("click", clearPin);
+      document.getElementById("lat").addEventListener("change", updatePointFromInputs);
+      document.getElementById("lon").addEventListener("change", updatePointFromInputs);
+      document.getElementById("acres").addEventListener("change", updateAcresFromInput);
+      setMode(mode);
+      syncInputs();
+      rendered = true;
+      resizeFrame();
+    }
+
+    function resizeFrame() {
+      const shell = document.querySelector(".shell");
+      const contentHeight = shell ? Math.ceil(shell.getBoundingClientRect().height) : 70;
+      const nextHeight = Math.max(contentHeight + 20, args.api_key ? 640 : 70);
+      if (Math.abs(nextHeight - frameHeight) < 2) return;
+      frameHeight = nextHeight;
+      Streamlit.setFrameHeight(nextHeight);
+    }
+
+    function loadMaps() {
+      if (mapsLoaded) {
+        initMap();
+        return;
+      }
+      if (mapsLoading) return;
+      mapsLoading = true;
+      window.__gardenProjectMapLoaded = () => {
+        mapsLoaded = true;
+        mapsLoading = false;
+        initMap();
+      };
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(args.api_key)}&callback=__gardenProjectMapLoaded`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    function initMap() {
+      if (map) {
+        updateMapCenter();
+        return;
+      }
+      const defaultCenter = { lat: 39.8283, lng: -98.5795 };
+      const point = getPoint();
+      const requestedCenter = getRequestedCenter();
+      const center = point || requestedCenter || defaultCenter;
+      map = new google.maps.Map(document.getElementById("map"), {
+        center,
+        zoom: point ? 15 : 7,
+        mapTypeId: "satellite",
+        tilt: 0,
+        streetViewControl: false,
+        mapTypeControl: true,
+        fullscreenControl: false
+      });
+      map.addListener("click", (event) => {
+        if (mode === "polygon") {
+          addPolygonVertex(event.latLng);
+        } else {
+          setPoint(event.latLng);
+        }
+      });
+      if (point) {
+        placeMarker(center);
+      } else if (requestedCenter) {
+        map.setCenter(requestedCenter);
+        map.setZoom(12);
+      }
+      restoreBoundary();
+      setTimeout(() => {
+        if (map) {
+          google.maps.event.trigger(map, "resize");
+          if (!getPoint() && getRequestedCenter()) return;
+          map.setCenter(getPoint() || defaultCenter);
+        }
+      }, 150);
+    }
+
+    function updateMapCenter() {
+      if (!map) return;
+      const point = getPoint();
+      const requestedCenter = getRequestedCenter();
+      const nextCenterKey = `${args.center_query || ""}|${requestedCenter?.lat ?? ""}|${requestedCenter?.lng ?? ""}`;
+      if (point) {
+        placeMarker(point);
+        if (centerKey !== nextCenterKey) map.setCenter(point);
+      } else if (requestedCenter && centerKey !== nextCenterKey) {
+        map.setCenter(requestedCenter);
+        map.setZoom(12);
+      }
+      centerKey = nextCenterKey;
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      const pin = document.getElementById("pinMode");
+      const poly = document.getElementById("polygonMode");
+      if (pin && poly) {
+        pin.classList.toggle("active", mode === "pin");
+        poly.classList.toggle("active", mode === "polygon");
+      }
+      const modeHelp = document.getElementById("modeHelp");
+      if (modeHelp) {
+        modeHelp.textContent = mode === "polygon"
+          ? "Click around the field edges to add boundary points. Drag points to refine the polygon."
+          : "Click the map to drop a field pin, or drag the existing pin to move it.";
+      }
+    }
+
+    function hasPoint() {
+      return getPoint() !== null;
+    }
+
+    function getPoint() {
+      const lat = parseCoordinate(value.latitude);
+      const lng = parseCoordinate(value.longitude);
+      return lat === null || lng === null ? null : { lat, lng };
+    }
+
+    function parseCoordinate(input) {
+      if (input === null || input === undefined || input === "") return null;
+      const parsed = Number(input);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function getRequestedCenter() {
+      if (!args.center) return null;
+      const lat = parseCoordinate(args.center.latitude);
+      const lng = parseCoordinate(args.center.longitude);
+      return lat === null || lng === null ? null : { lat, lng };
+    }
+
+    function setPoint(latLng) {
+      value.latitude = roundCoord(latLng.lat());
+      value.longitude = roundCoord(latLng.lng());
+      value.precision = value.boundary_geojson ? "boundary" : "point";
+      value.point_geojson = {
+        type: "Point",
+        coordinates: [Number(value.longitude), Number(value.latitude)]
+      };
+      placeMarker({ lat: Number(value.latitude), lng: Number(value.longitude) });
+      syncInputs();
+      resizeFrame();
+      sendValue();
+    }
+
+    function placeMarker(position) {
+      if (!marker) {
+        marker = new google.maps.Marker({
+          map,
+          position,
+          draggable: true,
+          title: "Field location"
+        });
+        marker.addListener("dragend", () => setPoint(marker.getPosition()));
+      } else {
+        marker.setPosition(position);
+      }
+    }
+
+    function clearPin() {
+      if (marker) {
+        marker.setMap(null);
+        marker = null;
+      }
+      value.latitude = null;
+      value.longitude = null;
+      value.point_geojson = null;
+      value.precision = value.boundary_geojson ? "boundary" : "regional";
+      syncInputs();
+      resizeFrame();
+      sendValue();
+    }
+
+    function addPolygonVertex(latLng) {
+      if (!polygon) {
+        polygon = new google.maps.Polygon({
+          map,
+          paths: [[latLng]],
+          editable: true,
+          draggable: false,
+          strokeColor: "#157a36",
+          strokeOpacity: 0.95,
+          strokeWeight: 3,
+          fillColor: "#157a36",
+          fillOpacity: 0.22
+        });
+        polygonPath = polygon.getPath();
+        attachPolygonListeners();
+        updateBoundaryGeoJson();
+        return;
+      }
+      polygonPath.push(latLng);
+      updateBoundaryGeoJson();
+    }
+
+    function attachPolygonListeners() {
+      const path = polygonPath || polygon.getPath();
+      if (!path) return;
+      ["insert_at", "set_at", "remove_at"].forEach((eventName) => {
+        google.maps.event.addListener(path, eventName, updateBoundaryGeoJson);
+      });
+    }
+
+    function restoreBoundary() {
+      if (!value.boundary_geojson || !value.boundary_geojson.coordinates) return;
+      const ring = value.boundary_geojson.coordinates[0] || [];
+      const path = ring.slice(0, -1).map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }));
+      if (!path.length) return;
+      polygon = new google.maps.Polygon({
+        map,
+        paths: [path],
+        editable: true,
+        strokeColor: "#157a36",
+        strokeOpacity: 0.95,
+        strokeWeight: 3,
+        fillColor: "#157a36",
+        fillOpacity: 0.22
+      });
+      polygonPath = polygon.getPath();
+      attachPolygonListeners();
+      const bounds = new google.maps.LatLngBounds();
+      path.forEach((point) => bounds.extend(point));
+      map.fitBounds(bounds);
+    }
+
+    function updateBoundaryGeoJson() {
+      const path = polygonPath || (polygon ? polygon.getPath() : null);
+      if (!polygon || !path || path.getLength() < 3) {
+        value.boundary_geojson = null;
+        value.precision = hasPoint() ? "point" : "regional";
+      } else {
+        const coordinates = [];
+        path.forEach((latLng) => {
+          coordinates.push([roundCoord(latLng.lng()), roundCoord(latLng.lat())]);
+        });
+        coordinates.push([...coordinates[0]]);
+        value.boundary_geojson = {
+          type: "Polygon",
+          coordinates: [coordinates]
+        };
+        value.precision = "boundary";
+      }
+      syncInputs();
+      resizeFrame();
+      sendValue();
+    }
+
+    function clearBoundary() {
+      if (polygon) {
+        polygon.setMap(null);
+        polygon = null;
+      }
+      polygonPath = null;
+      value.boundary_geojson = null;
+      value.precision = hasPoint() ? "point" : "regional";
+      syncInputs();
+      resizeFrame();
+      sendValue();
+    }
+
+    function updatePointFromInputs() {
+      const lat = Number(document.getElementById("lat").value);
+      const lon = Number(document.getElementById("lon").value);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      setPoint(new google.maps.LatLng(lat, lon));
+      if (map) map.setCenter({ lat, lng: lon });
+    }
+
+    function updateAcresFromInput() {
+      const acres = Number(document.getElementById("acres").value);
+      value.acres = Number.isFinite(acres) && acres > 0 ? acres : null;
+      sendValue();
+    }
+
+    function syncInputs() {
+      const lat = document.getElementById("lat");
+      const lon = document.getElementById("lon");
+      const acres = document.getElementById("acres");
+      const geojson = document.getElementById("geojson");
+      if (!lat || !lon || !acres || !geojson) return;
+      lat.value = value.latitude ?? "";
+      lon.value = value.longitude ?? "";
+      acres.value = value.acres ?? "";
+      geojson.value = value.boundary_geojson ? JSON.stringify(value.boundary_geojson) : "";
+    }
+
+    function sendValue() {
+      Streamlit.setComponentValue(value);
+    }
+
+    function roundCoord(number) {
+      return Math.round(Number(number) * 1000000) / 1000000;
+    }
+
+    Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, (event) => {
+      args = event.detail.args || {};
+      value = {
+        ...value,
+        ...(args.value || {})
+      };
+      renderShell();
+      loadMaps();
+      updateMapCenter();
+    });
+    Streamlit.setComponentReady();
+  </script>
+</body>
+</html>

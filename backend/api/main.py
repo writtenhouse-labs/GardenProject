@@ -11,9 +11,15 @@ from services.assessment_store import save as save_assessment
 from services.database import get_database_settings
 from services.users import get_profile, login_user, register_user
 from services.crop_progress_agent import assess, get_options
+from services.location_service import warm_county_cache
 from services.weather_service import integration_status
 
 app = FastAPI(title="GardenProject API")
+
+
+@app.on_event("startup")
+def warm_local_reference_data() -> None:
+    warm_county_cache()
 
 
 @app.get("/crop-intelligence/options")

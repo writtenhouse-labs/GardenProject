@@ -34,6 +34,11 @@ class CropAssessmentRequest(BaseModel):
     county: str | None = None
     county_fips: str | None = None
     zipcode: str | None = Field(default=None, pattern=r"^\d{5}$")
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    location_precision: str | None = None
+    point_geojson: dict | None = None
+    field_boundary_geojson: dict | None = None
     crop: str = Field(..., min_length=1)
     planting_month: int | None = Field(default=None, ge=1, le=12)
     growing_season: str | None = None

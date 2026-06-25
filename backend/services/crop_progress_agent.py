@@ -6,6 +6,9 @@ from services import crop_progress_service, crop_rotation_service, drought_servi
 from services.location_service import counties, state_details, state_from_zipcode, states
 
 
+UNKNOWN_CROP_LABEL = "Unknown / identify from boundary"
+
+
 def get_options(state_name: str | None = None, county_name: str | None = None, zipcode: str | None = None) -> dict:
     if zipcode and not state_name:
         state_name = state_from_zipcode(zipcode)
@@ -20,7 +23,11 @@ def get_options(state_name: str | None = None, county_name: str | None = None, z
         }
     state_alpha, _ = state_details(state_name)
     county_values, county_fallback = counties(state_name)
-    crops, crop_fallback = yield_history_service.available_crops(state_alpha, county_name)
+    if county_name or zipcode:
+        crops, crop_fallback = yield_history_service.available_crops(state_alpha, county_name)
+    else:
+        crops = yield_history_service.REGIONAL_CROPS.get(state_alpha, yield_history_service.DEFAULT_CROPS)
+        crop_fallback = False
     return {
         "states": states(),
         "counties": county_values,
@@ -35,8 +42,24 @@ def assess(request) -> dict:
     state_name = request.state or (state_from_zipcode(request.zipcode) if request.zipcode else "") or "United States"
     state_alpha, _ = state_details(state_name)
     location = f"{request.county}, {state_name}" if request.county else f"ZIP {request.zipcode}"
+    crop_is_unknown = _is_unknown_crop(request.crop)
+    crop_for_rotation = "" if crop_is_unknown else request.crop
+    field_location = {
+        "latitude": request.latitude,
+        "longitude": request.longitude,
+        "location_precision": request.location_precision or (
+            "boundary"
+            if request.field_boundary_geojson
+            else "point"
+            if request.latitude is not None and request.longitude is not None
+            else "regional"
+        ),
+        "point_geojson": request.point_geojson,
+        "field_boundary_geojson": request.field_boundary_geojson,
+        "field_size_acres": request.field_size,
+    }
     with ThreadPoolExecutor(max_workers=5) as executor:
-        progress_future = executor.submit(
+        progress_future = None if crop_is_unknown else executor.submit(
             crop_progress_service.assess,
             request.crop,
             state_alpha,
@@ -48,7 +71,7 @@ def assess(request) -> dict:
             weather_service.get_weather, request.county_fips, request.zipcode
         )
         drought_future = executor.submit(drought_service.get_drought, request.county_fips)
-        history_future = executor.submit(
+        history_future = None if crop_is_unknown else executor.submit(
             yield_history_service.get_yield_history,
             request.crop,
             state_alpha,
@@ -56,18 +79,18 @@ def assess(request) -> dict:
         )
         rotation_future = executor.submit(
             crop_rotation_service.get_crop_rotation,
-            request.crop,
+            crop_for_rotation,
             state_alpha,
             request.county,
         )
-        progress = progress_future.result()
+        progress = _unknown_progress() if crop_is_unknown else progress_future.result()
         weather = weather_future.result()
         drought = drought_future.result()
-        history = history_future.result()
+        history = _unknown_yield_history() if crop_is_unknown else history_future.result()
         rotation = rotation_future.result()
     risks = _risks(weather, drought, request.irrigation)
     similar = similarity_service.find_similar_seasons({
-        "crop": request.crop,
+        "crop": None if crop_is_unknown else request.crop,
         "county": request.county or request.zipcode,
         "month": request.planting_month or request.growing_season,
         "rainfall": weather["rainfall_mm"],
@@ -75,14 +98,21 @@ def assess(request) -> dict:
         "drought": drought["dsci"],
         "soil": request.soil_type,
         "rotation": rotation.get("rotation_sequence", []),
+        "field_location": field_location,
     })
     elevated = [risk["name"].lower() for risk in risks if risk["level"] == "High"]
     caution = [risk["name"].lower() for risk in risks if risk["level"] == "Moderate"]
     concern = elevated[0] if elevated else caution[0] if caution else None
-    summary = (
-        f"{request.crop} in {location} appears to be {progress['progress_status'].lower()} "
-        f"and is estimated at the {progress['estimated_growth_stage']} stage. "
-    )
+    if crop_is_unknown:
+        summary = (
+            f"The field in {location} is being assessed without a selected crop. "
+            "The report focuses on field location, weather, drought, and regional rotation context until crop identification is available. "
+        )
+    else:
+        summary = (
+            f"{request.crop} in {location} appears to be {progress['progress_status'].lower()} "
+            f"and is estimated at the {progress['estimated_growth_stage']} stage. "
+        )
     summary += (
         f"The leading environmental concern is {concern}. "
         if concern
@@ -90,6 +120,8 @@ def assess(request) -> dict:
     )
     if history["records"]:
         summary += "USDA yield history is available for comparison as conditions evolve."
+    elif crop_is_unknown:
+        summary += "Crop-specific yield and progress history will become available after crop identification."
     else:
         summary += "Yield history is currently unavailable, so the assessment uses weather, drought, and demo phenology signals."
 
@@ -104,7 +136,11 @@ def assess(request) -> dict:
             "location": location,
             "estimated_growth_stage": progress["estimated_growth_stage"],
             "progress_status": progress["progress_status"],
-            "statement": f"{request.crop} in {location} appears to be in the {progress['estimated_growth_stage']} stage.",
+            "statement": (
+                f"Crop is not identified yet for this field in {location}. Drawn boundaries can support future CDL, CLU, or satellite-based crop identification."
+                if crop_is_unknown
+                else f"{request.crop} in {location} appears to be in the {progress['estimated_growth_stage']} stage."
+            ),
         },
         "progress_comparison": {
             "last_week": progress["last_week"],
@@ -116,6 +152,7 @@ def assess(request) -> dict:
         "similar_seasons": similar,
         "agent_summary": summary,
         "yield_history": history,
+        "field_location": field_location,
         "integration_results": {
             "crop_progress": progress,
             "weather": weather,
@@ -129,6 +166,32 @@ def assess(request) -> dict:
             "placeholder_sources": placeholders,
             "sources": [progress["source"], weather["source"], drought["source"], history["source"], rotation["source"], similar["source"]],
         },
+    }
+
+
+def _is_unknown_crop(crop: str | None) -> bool:
+    return (crop or "").strip().lower() == UNKNOWN_CROP_LABEL.lower()
+
+
+def _unknown_progress() -> dict:
+    return {
+        "estimated_growth_stage": "not identified",
+        "progress_status": "Location context only",
+        "last_week": None,
+        "last_year": None,
+        "five_year_average": None,
+        "source": "Crop progress not requested",
+        "is_placeholder": False,
+        "note": "Crop progress requires a known crop or a future crop-identification integration.",
+    }
+
+
+def _unknown_yield_history() -> dict:
+    return {
+        "records": [],
+        "source": "Yield history not requested",
+        "is_placeholder": False,
+        "note": "Yield history requires a known crop. Use rotation context until field-level crop identification is available.",
     }
 
 
